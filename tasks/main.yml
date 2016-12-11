@@ -12,22 +12,22 @@
 
 - name: Copy kapacitor task definition files
   copy:
-    src:  "{{ item }}"
+    src:  "{{ kapacitor_extra_task_dir }}{{ item.name }}.tick"
     dest: "{{ kapacitor_extra_dsl_dir }}"
-  with_fileglob:
-    - "*.tick"
-  when: "{{ item|basename|replace('.tick','') not in kapacitor_extra_exclude_tasks }}"
+  with_items:
+    - "{{ kapacitor_extra_tick_list }}"
+  when: "{{ item.name not in kapacitor_extra_exclude_tasks }}"
 
 - name: Define and enable kapacitor tasks
   shell: >
-      kapacitor define {{ item|basename|replace('.tick','') }} \
-          -type stream \
-          -tick {{ kapacitor_extra_dsl_dir }}/{{ item|basename }} \
-          -dbrp {{ kapacitor_extra_database }}.{{ kapacitor_extra_retention_policy }} && \
-      kapacitor enable {{ item|basename|replace('.tick','') }}
-  with_fileglob:
-    - "*.tick"
-  when: "{{ item|basename|replace('.tick','') not in kapacitor_extra_exclude_tasks }}"
+      kapacitor define {{ item.name }} \
+          -type {{ item.mode | default('stream') }} \
+          -tick {{ kapacitor_extra_dsl_dir }}/{{ item.name }}.tick \
+          -dbrp {{ item.dbrp }} && \
+      kapacitor enable {{ item.name }}
+#          -dbrp {{ kapacitor_extra_database }}.{{ kapacitor_extra_retention_policy }} && \
+  with_items: "{{ kapacitor_extra_tick_list }}"
+  when: "{{ item.name not in kapacitor_extra_exclude_tasks }}"
   register: define
 
 - name: Delete excluded kapacitor task definition files
